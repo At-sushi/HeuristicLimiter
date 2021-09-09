@@ -1,0 +1,9 @@
+*.bundle
+*.a
+*.o
+*.dll
+*.obj
+*.pdb
+*.lib
+*.ipch
+*.db
