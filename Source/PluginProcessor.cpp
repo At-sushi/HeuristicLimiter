@@ -24,6 +24,7 @@ HeuristicLimiterAudioProcessor::HeuristicLimiterAudioProcessor()
     , gain(new juce::AudioParameterFloat("GAIN", "Gain", -80.0f, 20.0f, 0.0f))
     , threshold(new juce::AudioParameterFloat("THRESHOLD", "Threshold", -50.0f, 0.0f, -0.3f))
     , ratio(new juce::AudioParameterFloat("RATIO", "Ratio", 1.0f, 30.0f, 10.0f))
+    , oversampling(2, 4, juce::dsp::Oversampling<float>::filterHalfBandFIREquiripple)
 #endif
 {
     for (auto i : {gain, threshold, ratio}) {
@@ -113,6 +114,10 @@ void HeuristicLimiterAudioProcessor::prepareToPlay (double sampleRate, int sampl
     a.numChannels = 2;
   
     processorChain.prepare(a);
+
+    // reset oversampler
+    oversampling.reset();
+    oversampling.initProcessing(samplesPerBlock);
 }
 
 void HeuristicLimiterAudioProcessor::releaseResources()
@@ -158,6 +163,8 @@ void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
+    setLatencySamples(oversampling.getLatencyInSamples());
+
     // In case we have more outputs than inputs, this code clears any output
     // channels that didn't contain input data, (because these aren't
     // guaranteed to be empty - they may contain garbage).
@@ -174,39 +181,58 @@ void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     // Alternatively, you can process the samples with the channels
     // interleaved by keeping the same state.
     juce::dsp::AudioBlock<float> block(buffer);
-    juce::dsp::ProcessContextReplacing<float> context(block);
 
-    // simulate and calculate difference
-    static const auto calculateDiff = [&](double param) -> double {
-        auto temporaryProcessorChain = processorChain;
-        juce::AudioBuffer<float> resultBuffer(buffer.getNumChannels(), buffer.getNumSamples());
-        juce::dsp::AudioBlock<float> resultBlock(resultBuffer);
-        juce::dsp::ProcessContextNonReplacing<float> process(block, resultBlock);
-      
-        // 仮のRelease値を試す
-        temporaryProcessorChain.get<compressorIndex>().setRelease(static_cast<float>(param));
-        temporaryProcessorChain.process(process);
-        
-        double result = 0.0;
-        
-        // 誤差を計算
-        for (int channel = 0; channel < totalNumInputChannels; ++channel)
-        {
-            auto* inBufferFrom = buffer.getReadPointer(channel);
-            auto* inBufferTo = resultBuffer.getReadPointer(channel);
+    // コピー用のバッファを生成
+    juce::AudioBuffer<float> resultBuffer(buffer.getNumChannels(), buffer.getNumSamples());
+    juce::dsp::AudioBlock<float> resultBlock(resultBuffer);
+    juce::dsp::ProcessContextNonReplacing<float> simulate(block, resultBlock);
 
-            for (auto samples = 0; samples < buffer.getNumSamples(); samples++)
-                result += std::abs(*inBufferFrom++ - *inBufferTo++);
-        }
-        
-        return result;
+    // 誤差計測用の関数を返す
+    static const auto getFuncCalculateDiff = [&](bool is_release) {
+       // simulate and calculate difference
+        return [&, is_release](double param) -> double {
+            auto temporaryProcessorChain = processorChain;
+
+            // 仮のRelease値を試す
+            if (is_release)
+                temporaryProcessorChain.get<compressorIndex>().setRelease(static_cast<float>(param));
+            else
+                temporaryProcessorChain.get<compressorIndex>().setAttack(static_cast<float>(param));
+            temporaryProcessorChain.process(simulate);
+
+            double result = 0.0;
+
+            // 誤差を計算
+            for (int channel = 0; channel < totalNumInputChannels; ++channel)
+            {
+                auto* inBufferFrom = buffer.getReadPointer(channel);
+                auto* inBufferTo = resultBuffer.getReadPointer(channel);
+
+                for (auto samples = 0; samples < buffer.getNumSamples(); samples++)
+                    result += std::abs(*inBufferFrom++ - *inBufferTo++);
+            }
+
+            return result;
+        };
     };
-  
+
     // minimize differences
-    const auto release = boost::math::tools::brent_find_minima(calculateDiff, 1.0, 100.0, 24).first;
+    const auto release = boost::math::tools::brent_find_minima(getFuncCalculateDiff(true), 0.0, 300.0, 24).first;
     processorChain.get<compressorIndex>().setRelease(static_cast<float>(release));
 
+    const auto attack = boost::math::tools::brent_find_minima(getFuncCalculateDiff(false), 0.0, 30.0, 24).first;
+    processorChain.get<compressorIndex>().setAttack(static_cast<float>(attack * (1 << 4)));
+    processorChain.get<compressorIndex>().setRelease(static_cast<float>(release * (1 << 4)));
+
+    // get oversampled buffer
+    auto blockOver = oversampling.processSamplesUp(block);
+    juce::dsp::ProcessContextReplacing<float> context(blockOver);
+
+    // process
     processorChain.process(context);
+
+    // downsample oversampled buffer
+    oversampling.processSamplesDown(block);
 }
 
 //==============================================================================

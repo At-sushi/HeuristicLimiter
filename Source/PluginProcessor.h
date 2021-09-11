@@ -72,4 +72,5 @@ private:
         juce::dsp::Compressor<float>,
         juce::dsp::WaveShaper<float>
     > processorChain;
+    juce::dsp::Oversampling<float> oversampling;
 };
