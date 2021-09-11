@@ -6,6 +6,7 @@
   ==============================================================================
 */
 
+#include <boost/math/tools/minima.hpp>
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
@@ -174,7 +175,37 @@ void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     // interleaved by keeping the same state.
     juce::dsp::AudioBlock<float> block(buffer);
     juce::dsp::ProcessContextReplacing<float> context(block);
+
+    // simulate and calculate difference
+    static const auto calculateDiff = [&](double param) -> double {
+        auto temporaryProcessorChain = processorChain;
+        juce::AudioBuffer<float> resultBuffer(buffer.getNumChannels(), buffer.getNumSamples());
+        juce::dsp::AudioBlock<float> resultBlock(resultBuffer);
+        juce::dsp::ProcessContextNonReplacing<float> process(block, resultBlock);
+      
+        // 仮のRelease値を試す
+        temporaryProcessorChain.get<compressorIndex>().setRelease(static_cast<float>(param));
+        temporaryProcessorChain.process(process);
+        
+        double result = 0.0;
+        
+        // 誤差を計算
+        for (int channel = 0; channel < totalNumInputChannels; ++channel)
+        {
+            auto* inBufferFrom = buffer.getReadPointer(channel);
+            auto* inBufferTo = resultBuffer.getReadPointer(channel);
+
+            for (auto samples = 0; samples < buffer.getNumSamples(); samples++)
+                result += std::abs(*inBufferFrom++ - *inBufferTo++);
+        }
+        
+        return result;
+    };
   
+    // minimize differences
+    const auto release = boost::math::tools::brent_find_minima(calculateDiff, 1.0, 100.0, 24).first;
+    processorChain.get<compressorIndex>().setRelease(static_cast<float>(release));
+
     processorChain.process(context);
 }
 

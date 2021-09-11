@@ -1,1 +1,2 @@
 C:\Users\soji_2\Documents\vst\HeuristicLimiter\Builds\VisualStudio2019\x64\Debug\Shared Code\HeuristicLimiter.lib
+D:\source\repos\At-sushi\HeuristicLimiter\Builds\VisualStudio2019\x64\Debug\Shared Code\HeuristicLimiter.lib
