@@ -66,6 +66,8 @@ private:
       compressorIndex,
       waveShaperIndex
     };
+
+    constexpr static int OVERSAMPLE_FACTOR = 4, OVERSAMPLE_RATIO = 1 << OVERSAMPLE_FACTOR;
   
     juce::dsp::ProcessorChain<
         juce::dsp::Gain<float>,

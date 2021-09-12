@@ -23,8 +23,8 @@ HeuristicLimiterAudioProcessor::HeuristicLimiterAudioProcessor()
                        )
     , gain(new juce::AudioParameterFloat("GAIN", "Gain", -80.0f, 20.0f, 0.0f))
     , threshold(new juce::AudioParameterFloat("THRESHOLD", "Threshold", -50.0f, 0.0f, -0.3f))
-    , ratio(new juce::AudioParameterFloat("RATIO", "Ratio", 1.0f, 30.0f, 10.0f))
-    , oversampling(2, 4, juce::dsp::Oversampling<float>::filterHalfBandFIREquiripple)
+    , ratio(new juce::AudioParameterFloat("RATIO", "Ratio", 1.0f, 20.0f, 4.0f))
+    , oversampling(2, OVERSAMPLE_FACTOR, juce::dsp::Oversampling<float>::filterHalfBandFIREquiripple)
 #endif
 {
     for (auto i : {gain, threshold, ratio}) {
@@ -113,11 +113,15 @@ void HeuristicLimiterAudioProcessor::prepareToPlay (double sampleRate, int sampl
     a.maximumBlockSize = samplesPerBlock;
     a.numChannels = 2;
   
+    processorChain.reset();
     processorChain.prepare(a);
 
     // reset oversampler
     oversampling.reset();
     oversampling.initProcessing(samplesPerBlock);
+
+    // adjust latency
+    setLatencySamples(oversampling.getLatencyInSamples());
 }
 
 void HeuristicLimiterAudioProcessor::releaseResources()
@@ -163,8 +167,6 @@ void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    setLatencySamples(oversampling.getLatencyInSamples());
-
     // In case we have more outputs than inputs, this code clears any output
     // channels that didn't contain input data, (because these aren't
     // guaranteed to be empty - they may contain garbage).
@@ -188,7 +190,7 @@ void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     juce::dsp::ProcessContextNonReplacing<float> simulate(block, resultBlock);
 
     // 誤差計測用の関数を返す
-    static const auto getFuncCalculateDiff = [&](bool is_release) {
+    auto getFuncCalculateDiff = [&](bool is_release) {
        // simulate and calculate difference
         return [&, is_release](double param) -> double {
             auto temporaryProcessorChain = processorChain;
@@ -221,8 +223,8 @@ void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     processorChain.get<compressorIndex>().setRelease(static_cast<float>(release));
 
     const auto attack = boost::math::tools::brent_find_minima(getFuncCalculateDiff(false), 0.0, 30.0, 24).first;
-    processorChain.get<compressorIndex>().setAttack(static_cast<float>(attack * (1 << 4)));
-    processorChain.get<compressorIndex>().setRelease(static_cast<float>(release * (1 << 4)));
+    processorChain.get<compressorIndex>().setAttack(static_cast<float>(attack * OVERSAMPLE_RATIO));
+    processorChain.get<compressorIndex>().setRelease(static_cast<float>(release * OVERSAMPLE_RATIO));
 
     // get oversampled buffer
     auto blockOver = oversampling.processSamplesUp(block);

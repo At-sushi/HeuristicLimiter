@@ -1,10 +1,15 @@
 ﻿  PluginProcessor.cpp
-D:\source\repos\At-sushi\HeuristicLimiter\Source\PluginProcessor.cpp(92,61): warning C4100: 'index': 引数は関数の本体部で 1 度も参照されません。
-D:\source\repos\At-sushi\HeuristicLimiter\Source\PluginProcessor.cpp(96,72): warning C4100: 'index': 引数は関数の本体部で 1 度も参照されません。
-D:\source\repos\At-sushi\HeuristicLimiter\Source\PluginProcessor.cpp(101,88): warning C4100: 'newName': 引数は関数の本体部で 1 度も参照されません。
-D:\source\repos\At-sushi\HeuristicLimiter\Source\PluginProcessor.cpp(101,61): warning C4100: 'index': 引数は関数の本体部で 1 度も参照されません。
-D:\source\repos\At-sushi\HeuristicLimiter\Source\PluginProcessor.cpp(150,104): warning C4100: 'midiMessages': 引数は関数の本体部で 1 度も参照されません。
-D:\source\repos\At-sushi\HeuristicLimiter\Source\PluginProcessor.cpp(224,78): warning C4100: 'destData': 引数は関数の本体部で 1 度も参照されません。
-D:\source\repos\At-sushi\HeuristicLimiter\Source\PluginProcessor.cpp(231,81): warning C4100: 'sizeInBytes': 引数は関数の本体部で 1 度も参照されません。
-D:\source\repos\At-sushi\HeuristicLimiter\Source\PluginProcessor.cpp(231,71): warning C4100: 'data': 引数は関数の本体部で 1 度も参照されません。
+D:\source\repos\At-sushi\HeuristicLimiter\Source\PluginProcessor.cpp(93,61): warning C4100: 'index': 引数は関数の本体部で 1 度も参照されません。
+D:\source\repos\At-sushi\HeuristicLimiter\Source\PluginProcessor.cpp(97,72): warning C4100: 'index': 引数は関数の本体部で 1 度も参照されません。
+D:\source\repos\At-sushi\HeuristicLimiter\Source\PluginProcessor.cpp(102,88): warning C4100: 'newName': 引数は関数の本体部で 1 度も参照されません。
+D:\source\repos\At-sushi\HeuristicLimiter\Source\PluginProcessor.cpp(102,61): warning C4100: 'index': 引数は関数の本体部で 1 度も参照されません。
+D:\source\repos\At-sushi\HeuristicLimiter\Source\PluginProcessor.cpp(124,55): warning C4244: '引数': 'SampleType' から 'int' への変換です。データが失われる可能性があります。
+          with
+          [
+              SampleType=float
+          ]
+D:\source\repos\At-sushi\HeuristicLimiter\Source\PluginProcessor.cpp(159,104): warning C4100: 'midiMessages': 引数は関数の本体部で 1 度も参照されません。
+D:\source\repos\At-sushi\HeuristicLimiter\Source\PluginProcessor.cpp(252,78): warning C4100: 'destData': 引数は関数の本体部で 1 度も参照されません。
+D:\source\repos\At-sushi\HeuristicLimiter\Source\PluginProcessor.cpp(259,81): warning C4100: 'sizeInBytes': 引数は関数の本体部で 1 度も参照されません。
+D:\source\repos\At-sushi\HeuristicLimiter\Source\PluginProcessor.cpp(259,71): warning C4100: 'data': 引数は関数の本体部で 1 度も参照されません。
   HeuristicLimiter_SharedCode.vcxproj -> D:\source\repos\At-sushi\HeuristicLimiter\Builds\VisualStudio2019\x64\Debug\Shared Code\HeuristicLimiter.lib
