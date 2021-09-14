@@ -75,4 +75,7 @@ private:
         juce::dsp::WaveShaper<float>
     > processorChain;
     juce::dsp::Oversampling<float> oversampling;
+
+    // 一時コピー用バッファ
+    juce::AudioBuffer<float> resultBuffer;
 };
