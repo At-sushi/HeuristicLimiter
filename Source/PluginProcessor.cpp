@@ -1,4 +1,4 @@
-/*
+﻿/*
   ==============================================================================
 
     This file contains the basic framework code for a JUCE plugin processor.
@@ -187,8 +187,8 @@ void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     juce::dsp::AudioBlock<float> block(buffer);
 
     // コピー用のバッファを生成
-    // TODO: resize on preparetoPlay 
-    resultBuffer.setSize(buffer.getNumChannels(), buffer.getNumSamples(), false, false, true);
+    // TODO: resize on preparetoPlay
+    resultBuffer.setSize(buffer.getNumChannels(), buffer.getNumSamples(), false, false, true);  // 暫定措置
     juce::dsp::AudioBlock<float> resultBlock(resultBuffer);
     juce::dsp::ProcessContextNonReplacing<float> simulate(block, resultBlock);
 

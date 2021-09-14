@@ -1,4 +1,4 @@
-/*
+ï»¿/*
   ==============================================================================
 
     This file contains the basic framework code for a JUCE plugin processor.
@@ -76,6 +76,6 @@ private:
     > processorChain;
     juce::dsp::Oversampling<float> oversampling;
 
-    // ˆêƒRƒs[—pƒoƒbƒtƒ@
+    // ä¸€æ™‚ã‚³ãƒ”ãƒ¼ç”¨ãƒãƒƒãƒ•ã‚¡
     juce::AudioBuffer<float> resultBuffer;
 };
