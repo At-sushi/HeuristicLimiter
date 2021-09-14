@@ -122,6 +122,8 @@ void HeuristicLimiterAudioProcessor::prepareToPlay (double sampleRate, int sampl
 
     // adjust latency
     setLatencySamples(static_cast<int>(oversampling.getLatencyInSamples()));
+
+    resultBuffer.setSize(2, samplesPerBlock);
 }
 
 void HeuristicLimiterAudioProcessor::releaseResources()
@@ -185,7 +187,8 @@ void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     juce::dsp::AudioBlock<float> block(buffer);
 
     // コピー用のバッファを生成
-    resultBuffer.setSize(buffer.getNumChannels(), buffer.getNumSamples());
+    // TODO: resize on preparetoPlay 
+    resultBuffer.setSize(buffer.getNumChannels(), buffer.getNumSamples(), false, false, true);
     juce::dsp::AudioBlock<float> resultBlock(resultBuffer);
     juce::dsp::ProcessContextNonReplacing<float> simulate(block, resultBlock);
 
