@@ -21,11 +21,11 @@ HeuristicLimiterAudioProcessor::HeuristicLimiterAudioProcessor()
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
                        )
-    , gain(new juce::AudioParameterFloat("GAIN", "Gain", -80.0f, 20.0f, 0.0f))
+#endif
+    : gain(new juce::AudioParameterFloat("GAIN", "Gain", 0.0f, 20.0f, 0.0f))
     , threshold(new juce::AudioParameterFloat("THRESHOLD", "Threshold", -50.0f, 0.0f, -0.3f))
     , ratio(new juce::AudioParameterFloat("RATIO", "Ratio", 1.0f, 20.0f, 4.0f))
     , oversampling(2, OVERSAMPLE_FACTOR, juce::dsp::Oversampling<float>::filterHalfBandFIREquiripple)
-#endif
 {
     for (auto i : {gain, threshold, ratio}) {
       addParameter(i);
@@ -121,7 +121,7 @@ void HeuristicLimiterAudioProcessor::prepareToPlay (double sampleRate, int sampl
     oversampling.initProcessing(samplesPerBlock);
 
     // adjust latency
-    setLatencySamples(oversampling.getLatencyInSamples());
+    setLatencySamples(static_cast<int>(oversampling.getLatencyInSamples()));
 }
 
 void HeuristicLimiterAudioProcessor::releaseResources()
@@ -240,7 +240,7 @@ void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
 //==============================================================================
 bool HeuristicLimiterAudioProcessor::hasEditor() const
 {
-    return true; // (change this to false if you choose to not supply an editor)
+    return false; // (change this to false if you choose to not supply an editor)
 }
 
 juce::AudioProcessorEditor* HeuristicLimiterAudioProcessor::createEditor()
@@ -254,12 +254,20 @@ void HeuristicLimiterAudioProcessor::getStateInformation (juce::MemoryBlock& des
     // You should use this method to store your parameters in the memory block.
     // You could do that either as raw data, or use the XML or ValueTree classes
     // as intermediaries to make it easy to save and load complex data.
+    juce::MemoryOutputStream stream(destData, true);
+
+    for (auto i : { gain, threshold, ratio })
+        stream.writeFloat(*i);
 }
 
 void HeuristicLimiterAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
+    juce::MemoryInputStream stream(data, static_cast<size_t>(sizeInBytes), false);
+
+    for (auto i : { gain, threshold, ratio })
+        *i = stream.readFloat();
 }
 
 //==============================================================================
