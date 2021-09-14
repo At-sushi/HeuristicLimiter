@@ -6,7 +6,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HeuristicLimiter - Standalo
 		{670304C0-1844-FB62-116B-529832582F5C} = {670304C0-1844-FB62-116B-529832582F5C}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HeuristicLimiter - VST", "HeuristicLimiter_VST.vcxproj", "{9127F2B0-42AD-3550-5089-A04C862A0324}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HeuristicLimiter - VST3", "HeuristicLimiter_VST3.vcxproj", "{523E5040-47D3-B9BE-D654-75ADFB5DBD1C}"
 	ProjectSection(ProjectDependencies) = postProject
 		{670304C0-1844-FB62-116B-529832582F5C} = {670304C0-1844-FB62-116B-529832582F5C}
 	EndProjectSection
@@ -19,10 +19,10 @@ Global
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{9127F2B0-42AD-3550-5089-A04C862A0324}.Debug|x64.ActiveCfg = Debug|x64
-		{9127F2B0-42AD-3550-5089-A04C862A0324}.Debug|x64.Build.0 = Debug|x64
-		{9127F2B0-42AD-3550-5089-A04C862A0324}.Release|x64.ActiveCfg = Release|x64
-		{9127F2B0-42AD-3550-5089-A04C862A0324}.Release|x64.Build.0 = Release|x64
+		{523E5040-47D3-B9BE-D654-75ADFB5DBD1C}.Debug|x64.ActiveCfg = Debug|x64
+		{523E5040-47D3-B9BE-D654-75ADFB5DBD1C}.Debug|x64.Build.0 = Debug|x64
+		{523E5040-47D3-B9BE-D654-75ADFB5DBD1C}.Release|x64.ActiveCfg = Release|x64
+		{523E5040-47D3-B9BE-D654-75ADFB5DBD1C}.Release|x64.Build.0 = Release|x64
 		{17FC986C-2BAB-2ED5-E085-BC6B0A144FDA}.Debug|x64.ActiveCfg = Debug|x64
 		{17FC986C-2BAB-2ED5-E085-BC6B0A144FDA}.Debug|x64.Build.0 = Debug|x64
 		{17FC986C-2BAB-2ED5-E085-BC6B0A144FDA}.Release|x64.ActiveCfg = Release|x64

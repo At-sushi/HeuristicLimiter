@@ -29,7 +29,7 @@
     <array>
       <dict>
         <key>name</key>
-        <string>yourcompany: HeuristicLimiter</string>
+        <string>YUTOPER: HeuristicLimiter</string>
         <key>description</key>
         <string>HeuristicLimiter</string>
         <key>factoryFunction</key>
