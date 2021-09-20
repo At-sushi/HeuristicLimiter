@@ -84,6 +84,6 @@ private:
         bool is_release,
         const juce::dsp::ProcessContextNonReplacing<float>& simulate,
         int totalNumInputChannels,
-        juce::AudioSampleBuffer& buffer
+        const juce::AudioSampleBuffer& buffer
     );
 };
