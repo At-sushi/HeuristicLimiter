@@ -1,4 +1,4 @@
-﻿/*
+/*
   ==============================================================================
 
     This file contains the basic framework code for a JUCE plugin processor.
@@ -158,6 +158,35 @@ bool HeuristicLimiterAudioProcessor::isBusesLayoutSupported (const BusesLayout& 
 }
 #endif
 
+// 誤差計測用の関数を返す
+auto HeuristicLimiterAudioProcessor::getFuncCalculateDiff(bool is_release, const juce::dsp::ProcessContextNonReplacing<float>& simulate, int totalNumInputChannels, juce::AudioSampleBuffer& buffer)
+{
+    return [&, is_release](double param) -> double {
+        auto temporaryProcessorChain = processorChain;
+
+        // 仮のRelease値を試す
+        if (is_release)
+            temporaryProcessorChain.get<compressorIndex>().setRelease(static_cast<float>(param));
+        else
+            temporaryProcessorChain.get<compressorIndex>().setAttack(static_cast<float>(param));
+        temporaryProcessorChain.process(simulate);
+
+        double result = 0.0;
+
+        // 誤差を計算
+        for (int channel = 0; channel < totalNumInputChannels; ++channel)
+        {
+            auto* inBufferFrom = buffer.getReadPointer(channel);
+            auto* inBufferTo = resultBuffer.getReadPointer(channel);
+
+            for (auto samples = 0; samples < buffer.getNumSamples(); samples++)
+                result += std::abs(*inBufferFrom++ - *inBufferTo++);
+        }
+
+        return result;
+    };
+}
+
 void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     // applying parameters
@@ -192,40 +221,12 @@ void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     juce::dsp::AudioBlock<float> resultBlock(resultBuffer);
     juce::dsp::ProcessContextNonReplacing<float> simulate(block, resultBlock);
 
-    // 誤差計測用の関数を返す
-    auto getFuncCalculateDiff = [&](bool is_release) {
-       // simulate and calculate difference
-        return [&, is_release](double param) -> double {
-            auto temporaryProcessorChain = processorChain;
-
-            // 仮のRelease値を試す
-            if (is_release)
-                temporaryProcessorChain.get<compressorIndex>().setRelease(static_cast<float>(param));
-            else
-                temporaryProcessorChain.get<compressorIndex>().setAttack(static_cast<float>(param));
-            temporaryProcessorChain.process(simulate);
-
-            double result = 0.0;
-
-            // 誤差を計算
-            for (int channel = 0; channel < totalNumInputChannels; ++channel)
-            {
-                auto* inBufferFrom = buffer.getReadPointer(channel);
-                auto* inBufferTo = resultBuffer.getReadPointer(channel);
-
-                for (auto samples = 0; samples < buffer.getNumSamples(); samples++)
-                    result += std::abs(*inBufferFrom++ - *inBufferTo++);
-            }
-
-            return result;
-        };
-    };
 
     // minimize differences
-    const auto release = boost::math::tools::brent_find_minima(getFuncCalculateDiff(true), 0.0, 300.0, 24).first;
+    const auto release = boost::math::tools::brent_find_minima(getFuncCalculateDiff(true, simulate, totalNumInputChannels, buffer), 0.0, 300.0, 24).first;
     processorChain.get<compressorIndex>().setRelease(static_cast<float>(release));
 
-    const auto attack = boost::math::tools::brent_find_minima(getFuncCalculateDiff(false), 0.0, 30.0, 24).first;
+    const auto attack = boost::math::tools::brent_find_minima(getFuncCalculateDiff(false, simulate, totalNumInputChannels, buffer), 0.0, 30.0, 24).first;
     processorChain.get<compressorIndex>().setAttack(static_cast<float>(attack * OVERSAMPLE_RATIO));
     processorChain.get<compressorIndex>().setRelease(static_cast<float>(release * OVERSAMPLE_RATIO));
 

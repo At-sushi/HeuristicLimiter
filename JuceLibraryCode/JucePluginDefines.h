@@ -44,7 +44,7 @@
  #define JucePlugin_Desc                   "HeuristicLimiter"
 #endif
 #ifndef  JucePlugin_Manufacturer
- #define JucePlugin_Manufacturer           "YUTOPER"
+ #define JucePlugin_Manufacturer           "Atsushi Nakagawa"
 #endif
 #ifndef  JucePlugin_ManufacturerWebsite
  #define JucePlugin_ManufacturerWebsite    ""
@@ -149,7 +149,7 @@
  #define JucePlugin_IAASubType             JucePlugin_PluginCode
 #endif
 #ifndef  JucePlugin_IAAName
- #define JucePlugin_IAAName                "YUTOPER: HeuristicLimiter"
+ #define JucePlugin_IAAName                "Atsushi Nakagawa: HeuristicLimiter"
 #endif
 #ifndef  JucePlugin_VSTNumMidiInputs
  #define JucePlugin_VSTNumMidiInputs       16

@@ -78,4 +78,12 @@ private:
 
     // 一時コピー用バッファ
     juce::AudioBuffer<float> resultBuffer;
+
+    // 誤差計測用の関数を返す
+    auto getFuncCalculateDiff(
+        bool is_release,
+        const juce::dsp::ProcessContextNonReplacing<float>& simulate,
+        int totalNumInputChannels,
+        juce::AudioSampleBuffer& buffer
+    );
 };
