@@ -165,7 +165,7 @@ auto HeuristicLimiterAudioProcessor::getFuncCalculateDiff(
     int totalNumInputChannels,
     const juce::AudioSampleBuffer& buffer)
 {
-    return [&, is_release](double param) -> double {
+    return [&, is_release, totalNumInputChannels](double param) -> double {
         auto temporaryProcessorChain = processorChain;
 
         // 仮のRelease値を試す
@@ -184,7 +184,7 @@ auto HeuristicLimiterAudioProcessor::getFuncCalculateDiff(
             auto* inBufferTo = resultBuffer.getReadPointer(channel);
 
             for (auto samples = 0; samples < buffer.getNumSamples(); samples++)
-                result += std::abs(*inBufferFrom++ - *inBufferTo++);
+                result += std::fabs(*inBufferFrom++ - *inBufferTo++);
         }
 
         return result;
@@ -225,12 +225,21 @@ void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     juce::dsp::AudioBlock<float> resultBlock(resultBuffer);
     juce::dsp::ProcessContextNonReplacing<float> simulate(block, resultBlock);
 
-
     // minimize differences
-    const auto release = boost::math::tools::brent_find_minima(getFuncCalculateDiff(true, simulate, totalNumInputChannels, buffer), 0.0, 300.0, 24).first;
+    const auto release = boost::math::tools::brent_find_minima(
+        getFuncCalculateDiff(true, simulate, totalNumInputChannels, buffer),
+        0.0,
+        300.0,
+        24
+    ).first;
     processorChain.get<compressorIndex>().setRelease(static_cast<float>(release));
 
-    const auto attack = boost::math::tools::brent_find_minima(getFuncCalculateDiff(false, simulate, totalNumInputChannels, buffer), 0.0, 30.0, 24).first;
+    const auto attack = boost::math::tools::brent_find_minima(
+        getFuncCalculateDiff(false, simulate, totalNumInputChannels, buffer),
+        0.0,
+        30.0,
+        24
+    ).first;
     processorChain.get<compressorIndex>().setAttack(static_cast<float>(attack * OVERSAMPLE_RATIO));
     processorChain.get<compressorIndex>().setRelease(static_cast<float>(release * OVERSAMPLE_RATIO));
 
