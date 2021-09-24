@@ -29,6 +29,7 @@ public:
    #endif
 
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
+    void processBlockBypassed(juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
     //==============================================================================
     juce::AudioProcessorEditor* createEditor() override;
@@ -57,6 +58,7 @@ private:
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HeuristicLimiterAudioProcessor)
   
+    // parameters
     juce::AudioParameterFloat *const gain,
                               *const threshold,
                               *const ratio;
@@ -69,6 +71,7 @@ private:
 
     constexpr static int OVERSAMPLE_FACTOR = 4, OVERSAMPLE_RATIO = 1 << OVERSAMPLE_FACTOR;
   
+    // filters
     juce::dsp::ProcessorChain<
         juce::dsp::Gain<float>,
         juce::dsp::Compressor<float>,

@@ -254,10 +254,21 @@ void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     oversampling.processSamplesDown(block);
 }
 
+void HeuristicLimiterAudioProcessor::processBlockBypassed(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
+{
+    // 一回経由させる
+    // get oversampled buffer
+    juce::dsp::AudioBlock<float> block(buffer);
+    auto blockOver = oversampling.processSamplesUp(block);
+
+    // downsample oversampled buffer
+    oversampling.processSamplesDown(block);
+}
+
 //==============================================================================
 bool HeuristicLimiterAudioProcessor::hasEditor() const
 {
-    return false; // (change this to false if you choose to not supply an editor)
+    return true; // (change this to false if you choose to not supply an editor)
 }
 
 juce::AudioProcessorEditor* HeuristicLimiterAudioProcessor::createEditor()
