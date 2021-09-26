@@ -159,7 +159,7 @@ bool HeuristicLimiterAudioProcessor::isBusesLayoutSupported (const BusesLayout& 
 #endif
 
 // 誤差計測用の関数を返す
-template <bool is_release>
+template <bool Is_release>
 auto HeuristicLimiterAudioProcessor::getFuncCalculateDiff(
     const juce::dsp::ProcessContextNonReplacing<float>& simulate,
     int totalNumInputChannels,
@@ -168,8 +168,8 @@ auto HeuristicLimiterAudioProcessor::getFuncCalculateDiff(
     return [&, totalNumInputChannels](double param) -> double {
         auto temporaryProcessorChain = processorChain;
 
-        // 仮のRelease値を試す
-        if constexpr (is_release)
+        // 仮のRelease/Attack値を試す
+        if constexpr (Is_release)
             temporaryProcessorChain.get<compressorIndex>().setRelease(static_cast<float>(param));
         else
             temporaryProcessorChain.get<compressorIndex>().setAttack(static_cast<float>(param));
