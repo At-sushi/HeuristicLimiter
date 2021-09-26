@@ -159,17 +159,17 @@ bool HeuristicLimiterAudioProcessor::isBusesLayoutSupported (const BusesLayout& 
 #endif
 
 // 誤差計測用の関数を返す
+template <bool is_release>
 auto HeuristicLimiterAudioProcessor::getFuncCalculateDiff(
-    bool is_release,
     const juce::dsp::ProcessContextNonReplacing<float>& simulate,
     int totalNumInputChannels,
     const juce::AudioSampleBuffer& buffer)
 {
-    return [&, is_release, totalNumInputChannels](double param) -> double {
+    return [&, totalNumInputChannels](double param) -> double {
         auto temporaryProcessorChain = processorChain;
 
         // 仮のRelease値を試す
-        if (is_release)
+        if constexpr (is_release)
             temporaryProcessorChain.get<compressorIndex>().setRelease(static_cast<float>(param));
         else
             temporaryProcessorChain.get<compressorIndex>().setAttack(static_cast<float>(param));
@@ -227,7 +227,7 @@ void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
 
     // minimize differences
     const auto release = boost::math::tools::brent_find_minima(
-        getFuncCalculateDiff(true, simulate, totalNumInputChannels, buffer),
+        getFuncCalculateDiff<true>(simulate, totalNumInputChannels, buffer),
         0.0,
         300.0,
         24
@@ -235,7 +235,7 @@ void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     processorChain.get<compressorIndex>().setRelease(static_cast<float>(release));
 
     const auto attack = boost::math::tools::brent_find_minima(
-        getFuncCalculateDiff(false, simulate, totalNumInputChannels, buffer),
+        getFuncCalculateDiff<false>(simulate, totalNumInputChannels, buffer),
         0.0,
         30.0,
         24
@@ -268,7 +268,7 @@ void HeuristicLimiterAudioProcessor::processBlockBypassed(juce::AudioBuffer<floa
 //==============================================================================
 bool HeuristicLimiterAudioProcessor::hasEditor() const
 {
-    return true; // (change this to false if you choose to not supply an editor)
+    return false; // (change this to false if you choose to not supply an editor)
 }
 
 juce::AudioProcessorEditor* HeuristicLimiterAudioProcessor::createEditor()

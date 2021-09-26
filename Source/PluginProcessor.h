@@ -83,8 +83,8 @@ private:
     juce::AudioBuffer<float> resultBuffer;
 
     // 誤差計測用の関数を返す
+    template<bool is_release>
     auto getFuncCalculateDiff(
-        bool is_release,
         const juce::dsp::ProcessContextNonReplacing<float>& simulate,
         int totalNumInputChannels,
         const juce::AudioSampleBuffer& buffer
