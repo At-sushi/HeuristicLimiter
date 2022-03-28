@@ -109,9 +109,9 @@ void HeuristicLimiterAudioProcessor::prepareToPlay (double sampleRate, int sampl
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
     juce::dsp::ProcessSpec a;
-    a.sampleRate = sampleRate;
-    a.maximumBlockSize = samplesPerBlock;
-    a.numChannels = 2;
+    a.sampleRate = sampleRate * OVERSAMPLE_RATIO;
+    a.maximumBlockSize = samplesPerBlock * OVERSAMPLE_RATIO;
+    a.numChannels = getTotalNumOutputChannels();
   
     processorChain.reset();
     processorChain.prepare(a);
@@ -123,7 +123,7 @@ void HeuristicLimiterAudioProcessor::prepareToPlay (double sampleRate, int sampl
     // adjust latency
     setLatencySamples(static_cast<int>(oversampling.getLatencyInSamples()));
 
-    resultBuffer.setSize(2, samplesPerBlock);
+    resultBuffer.setSize(getTotalNumOutputChannels(), samplesPerBlock);
 }
 
 void HeuristicLimiterAudioProcessor::releaseResources()
@@ -163,16 +163,16 @@ template <bool Is_release>
 auto HeuristicLimiterAudioProcessor::getFuncCalculateDiff(
     const juce::dsp::ProcessContextNonReplacing<float>& simulate,
     int totalNumInputChannels,
-    const juce::AudioSampleBuffer& buffer)
+    const juce::AudioSampleBuffer& buffer) const
 {
     return [&, totalNumInputChannels](double param) -> double {
         auto temporaryProcessorChain = processorChain;
 
         // 仮のRelease/Attack値を試す
         if constexpr (Is_release)
-            temporaryProcessorChain.get<compressorIndex>().setRelease(static_cast<float>(param));
+            temporaryProcessorChain.get<compressorIndex>().setRelease(static_cast<float>(param / OVERSAMPLE_RATIO));
         else
-            temporaryProcessorChain.get<compressorIndex>().setAttack(static_cast<float>(param));
+            temporaryProcessorChain.get<compressorIndex>().setAttack(static_cast<float>(param / OVERSAMPLE_RATIO));
         temporaryProcessorChain.process(simulate);
 
         double result = 0.0;
@@ -220,8 +220,6 @@ void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     juce::dsp::AudioBlock<float> block(buffer);
 
     // コピー用のバッファを生成
-    // TODO: resize on preparetoPlay
-    resultBuffer.setSize(buffer.getNumChannels(), buffer.getNumSamples(), false, false, true);  // 暫定措置
     juce::dsp::AudioBlock<float> resultBlock(resultBuffer);
     juce::dsp::ProcessContextNonReplacing<float> simulate(block, resultBlock);
 
@@ -232,7 +230,7 @@ void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
         300.0,
         24
     ).first;
-    processorChain.get<compressorIndex>().setRelease(static_cast<float>(release));
+    processorChain.get<compressorIndex>().setRelease(static_cast<float>(release / OVERSAMPLE_RATIO));
 
     const auto attack = boost::math::tools::brent_find_minima(
         getFuncCalculateDiff<false>(simulate, totalNumInputChannels, buffer),
@@ -240,8 +238,8 @@ void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
         30.0,
         24
     ).first;
-    processorChain.get<compressorIndex>().setAttack(static_cast<float>(attack * OVERSAMPLE_RATIO));
-    processorChain.get<compressorIndex>().setRelease(static_cast<float>(release * OVERSAMPLE_RATIO));
+    processorChain.get<compressorIndex>().setAttack(static_cast<float>(attack));
+    processorChain.get<compressorIndex>().setRelease(static_cast<float>(release));
 
     // get oversampled buffer
     auto blockOver = oversampling.processSamplesUp(block);
@@ -260,6 +258,11 @@ void HeuristicLimiterAudioProcessor::processBlockBypassed(juce::AudioBuffer<floa
     // get oversampled buffer
     juce::dsp::AudioBlock<float> block(buffer);
     auto blockOver = oversampling.processSamplesUp(block);
+    juce::dsp::ProcessContextReplacing<float> context(blockOver);
+    context.isBypassed = true;
+
+    // process
+    processorChain.process(context);
 
     // downsample oversampled buffer
     oversampling.processSamplesDown(block);
