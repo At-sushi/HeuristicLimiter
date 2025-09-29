@@ -26,6 +26,7 @@ HeuristicLimiterAudioProcessor::HeuristicLimiterAudioProcessor()
     , threshold(new juce::AudioParameterFloat("THRESHOLD", "Threshold", -50.0f, 0.0f, -0.3f))
     , ratio(new juce::AudioParameterFloat("RATIO", "Ratio", 1.0f, 20.0f, 4.0f))
     , oversampling(2, OVERSAMPLE_FACTOR, juce::dsp::Oversampling<float>::filterHalfBandFIREquiripple)
+    , fft(12)
 {
     for (auto i : {gain, threshold, ratio}) {
       addParameter(i);
@@ -122,8 +123,13 @@ void HeuristicLimiterAudioProcessor::prepareToPlay (double sampleRate, int sampl
 
     // adjust latency
     setLatencySamples(static_cast<int>(oversampling.getLatencyInSamples()));
-
-    resultBuffer.setSize(getTotalNumOutputChannels(), samplesPerBlock);
+    
+    // FFT・バッファ初期化
+    const auto order = static_cast<int>(std::ceil(std::log2(samplesPerBlock)));
+    fft = juce::dsp::FFT(order);
+    fftBuffer = std::vector(getTotalNumInputChannels(), std::vector(fft.getSize() * 2, 0.0f));
+    
+    temporaryResultBuffer.setSize(getTotalNumOutputChannels(), fft.getSize() * 2);
 }
 
 void HeuristicLimiterAudioProcessor::releaseResources()
@@ -163,10 +169,18 @@ template <bool Is_release>
 auto HeuristicLimiterAudioProcessor::getFuncCalculateDiff(
     const juce::dsp::ProcessContextNonReplacing<float>& simulate,
     int totalNumInputChannels,
-    const juce::AudioSampleBuffer& buffer) const
+    const decltype(fftBuffer)& buffer)
 {
     return [&, totalNumInputChannels](double param) -> double {
+		// FIXME: ここでのparamはRelease/Attack値を表すが、OVERSAMPLE_RATIOを考慮していないため、調整が必要
         auto temporaryProcessorChain = processorChain;
+
+        juce::dsp::ProcessSpec a;
+        a.sampleRate = this->getSampleRate();
+        a.maximumBlockSize = simulate.getInputBlock().getNumSamples();
+        a.numChannels = totalNumInputChannels;
+
+        temporaryProcessorChain.prepare(a);
 
         // 仮のRelease/Attack値を試す
         if constexpr (Is_release)
@@ -175,16 +189,26 @@ auto HeuristicLimiterAudioProcessor::getFuncCalculateDiff(
             temporaryProcessorChain.get<compressorIndex>().setAttack(static_cast<float>(param / OVERSAMPLE_RATIO));
         temporaryProcessorChain.process(simulate);
 
-        double result = 0.0;
+        std::atomic<double> result = 1.0;
 
         // 誤差を計算
+		//#pragma omp parallel for
         for (int channel = 0; channel < totalNumInputChannels; ++channel)
         {
-            auto* inBufferFrom = buffer.getReadPointer(channel);
-            auto* inBufferTo = resultBuffer.getReadPointer(channel);
+            auto inBufferFrom = buffer[channel].begin();
+            auto* inBufferTo = temporaryResultBuffer.getWritePointer(channel);
 
-            for (auto samples = 0; samples < buffer.getNumSamples(); samples++)
-                result += std::fabs(*inBufferFrom++ - *inBufferTo++);
+            // FFT（resultBufferを直接指定している点については暫定措置）
+            std::fill_n(inBufferTo + simulate.getInputBlock().getNumSamples(),
+                        fft.getSize() * 2 - simulate.getInputBlock().getNumSamples(),
+                        0.0f);
+            fft.performFrequencyOnlyForwardTransform(inBufferTo);
+            
+            for (auto samples = 0; samples < buffer[channel].size(); samples++) {
+                const auto factor = (1.0 + std::fabs(*inBufferFrom++)) / (1.0 + std::fabs(*inBufferTo++));
+
+                result = result * (factor >= 1.0 ? factor : 1.0 / factor);
+            }
         }
 
         return result;
@@ -194,7 +218,6 @@ auto HeuristicLimiterAudioProcessor::getFuncCalculateDiff(
 void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     // applying parameters
-    processorChain.get<gainIndex>().setGainDecibels(*gain);
     processorChain.get<compressorIndex>().setThreshold(*threshold);
     processorChain.get<compressorIndex>().setRatio(*ratio);
 
@@ -211,6 +234,18 @@ void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
+    // Gain audio before simulation
+    buffer.applyGain(juce::Decibels::decibelsToGain(float{*gain}));    // 暫定
+    
+    // FFT処理
+    for (int channel = 0; channel < totalNumInputChannels; ++channel)
+    {
+        std::copy_n(buffer.getReadPointer(channel), buffer.getNumSamples(), fftBuffer[channel].begin());
+        std::fill(fftBuffer[channel].begin() + buffer.getNumSamples(), fftBuffer[channel].end(), 0.0f);
+        
+        fft.performFrequencyOnlyForwardTransform(fftBuffer[channel].data());
+    }
+
     // This is the place where you'd normally do the guts of your plugin's
     // audio processing...
     // Make sure to reset the state if your inner loop is processing
@@ -220,12 +255,12 @@ void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     juce::dsp::AudioBlock<float> block(buffer);
 
     // コピー用のバッファを生成
-    juce::dsp::AudioBlock<float> resultBlock(resultBuffer);
+    juce::dsp::AudioBlock<float> resultBlock(temporaryResultBuffer);
     juce::dsp::ProcessContextNonReplacing<float> simulate(block, resultBlock);
 
     // minimize differences
     const auto release = boost::math::tools::brent_find_minima(
-        getFuncCalculateDiff<true>(simulate, totalNumInputChannels, buffer),
+        getFuncCalculateDiff<true>(simulate, totalNumInputChannels, fftBuffer),
         0.0,
         300.0,
         24
@@ -233,7 +268,7 @@ void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     processorChain.get<compressorIndex>().setRelease(static_cast<float>(release / OVERSAMPLE_RATIO));
 
     const auto attack = boost::math::tools::brent_find_minima(
-        getFuncCalculateDiff<false>(simulate, totalNumInputChannels, buffer),
+        getFuncCalculateDiff<false>(simulate, totalNumInputChannels, fftBuffer),
         0.0,
         30.0,
         24
@@ -285,20 +320,27 @@ void HeuristicLimiterAudioProcessor::getStateInformation (juce::MemoryBlock& des
     // You should use this method to store your parameters in the memory block.
     // You could do that either as raw data, or use the XML or ValueTree classes
     // as intermediaries to make it easy to save and load complex data.
-    juce::MemoryOutputStream stream(destData, true);
+    std::unique_ptr<juce::XmlElement> xml (new juce::XmlElement ("ParamHeuristicLimiter"));
 
-    for (auto i : { gain, threshold, ratio })
-        stream.writeFloat(*i);
+    xml->setAttribute("gain", *gain);
+    xml->setAttribute("threshold", *threshold);
+    xml->setAttribute("ratio", *ratio);
+
+    copyXmlToBinary(*xml, destData);
 }
 
 void HeuristicLimiterAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
-    juce::MemoryInputStream stream(data, static_cast<size_t>(sizeInBytes), false);
+    std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary(data, sizeInBytes));
 
-    for (auto i : { gain, threshold, ratio })
-        *i = stream.readFloat();
+    if (xmlState.get() != nullptr && xmlState->hasTagName("ParamHeuristicLimiter")) {
+        *gain = xmlState->getDoubleAttribute("gain", 0.0);
+        *threshold = xmlState->getDoubleAttribute("threshold", -0.3);
+        *ratio = xmlState->getDoubleAttribute("ratio", 4.0);
+    }
+
 }
 
 //==============================================================================
