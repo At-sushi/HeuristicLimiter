@@ -3,9 +3,8 @@
 <JUCERPROJECT id="RJHtN9" name="HeuristicLimiter" projectType="audioplug" useAppConfig="0"
               addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1"
               pluginFormats="buildAU,buildStandalone,buildVST3" pluginVSTCategory="kPlugCategMastering"
-              cppLanguageStandard="latest" pluginChannelConfigs="{1, 1}, {2, 2}"
-              headerPath="../../../boost_1_77_0&#10;" pluginVST3Category="Dynamics,Mastering"
-              pluginManufacturer="Atsushi Nakagawa">
+              pluginChannelConfigs="{1, 1}, {2, 2}" headerPath="../../../boost_1_77_0;/Volumes/Win/boost_1_77_0&#10;"
+              pluginVST3Category="Dynamics,Mastering" pluginManufacturer="Atsushi Nakagawa">
   <MAINGROUP id="rdZLhN" name="HeuristicLimiter">
     <GROUP id="{18DDAAEB-C8D8-1F14-8A73-D10E8DD67100}" name="Source">
       <FILE id="ZnnZRg" name="PluginProcessor.cpp" compile="1" resource="0"

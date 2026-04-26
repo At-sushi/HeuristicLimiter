@@ -130,6 +130,7 @@ void HeuristicLimiterAudioProcessor::prepareToPlay (double sampleRate, int sampl
     fftBuffer = std::vector(getTotalNumInputChannels(), std::vector(fft.getSize() * 2, 0.0f));
     
     temporaryResultBuffer.setSize(getTotalNumOutputChannels(), fft.getSize() * 2);
+	temporaryResultBuffer2.setSize(getTotalNumOutputChannels(), samplesPerBlock);
 }
 
 void HeuristicLimiterAudioProcessor::releaseResources()
@@ -175,12 +176,12 @@ auto HeuristicLimiterAudioProcessor::getFuncCalculateDiff(
 		// FIXME: ここでのparamはRelease/Attack値を表すが、OVERSAMPLE_RATIOを考慮していないため、調整が必要
         auto temporaryProcessorChain = processorChain;
 
-        juce::dsp::ProcessSpec a;
-        a.sampleRate = this->getSampleRate();
-        a.maximumBlockSize = simulate.getInputBlock().getNumSamples();
-        a.numChannels = totalNumInputChannels;
+        //juce::dsp::ProcessSpec a;
+        //a.sampleRate = this->getSampleRate();
+        //a.maximumBlockSize = simulate.getInputBlock().getNumSamples();
+        //a.numChannels = totalNumInputChannels;
 
-        temporaryProcessorChain.prepare(a);
+        //temporaryProcessorChain.prepare(a);
 
         // 仮のRelease/Attack値を試す
         if constexpr (Is_release)
@@ -189,7 +190,7 @@ auto HeuristicLimiterAudioProcessor::getFuncCalculateDiff(
             temporaryProcessorChain.get<compressorIndex>().setAttack(static_cast<float>(param / OVERSAMPLE_RATIO));
         temporaryProcessorChain.process(simulate);
 
-        std::atomic<double> result = 1.0;
+        double result = 0.0;
 
         // 誤差を計算
 		//#pragma omp parallel for
@@ -205,9 +206,7 @@ auto HeuristicLimiterAudioProcessor::getFuncCalculateDiff(
             fft.performFrequencyOnlyForwardTransform(inBufferTo);
             
             for (auto samples = 0; samples < buffer[channel].size(); samples++) {
-                const auto factor = (1.0 + std::fabs(*inBufferFrom++)) / (1.0 + std::fabs(*inBufferTo++));
-
-                result = result * (factor >= 1.0 ? factor : 1.0 / factor);
+                result += std::fabs(std::log((1.0f + *inBufferFrom++) / (1.0f + *inBufferTo++)));
             }
         }
 
@@ -255,7 +254,7 @@ void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     juce::dsp::AudioBlock<float> block(buffer);
 
     // コピー用のバッファを生成
-    juce::dsp::AudioBlock<float> resultBlock(temporaryResultBuffer);
+    juce::dsp::AudioBlock<float> resultBlock(temporaryResultBuffer2);
     juce::dsp::ProcessContextNonReplacing<float> simulate(block, resultBlock);
 
     // minimize differences

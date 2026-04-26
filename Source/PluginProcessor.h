@@ -1,4 +1,4 @@
-﻿/*
+/*
   ==============================================================================
 
     This file contains the basic framework code for a JUCE plugin processor.
@@ -64,7 +64,6 @@ private:
                               *const ratio;
   
     enum {
-      gainIndex,
       compressorIndex,
       waveShaperIndex
     };
@@ -73,20 +72,23 @@ private:
   
     // filters
     juce::dsp::ProcessorChain<
-        juce::dsp::Gain<float>,
         juce::dsp::Compressor<float>,
         juce::dsp::WaveShaper<float>
     > processorChain;
     juce::dsp::Oversampling<float> oversampling;
 
+    // FFT用
+    juce::dsp::FFT fft;
+    std::vector<std::vector<float>> fftBuffer;
+    
     // 一時コピー用バッファ
-    juce::AudioBuffer<float> resultBuffer;
+    juce::AudioBuffer<float> temporaryResultBuffer, temporaryResultBuffer2;
 
     // 誤差計測用の関数を返す
     template<bool is_release>
     auto getFuncCalculateDiff(
         const juce::dsp::ProcessContextNonReplacing<float>& simulate,
         int totalNumInputChannels,
-        const juce::AudioSampleBuffer& buffer
+        const decltype(fftBuffer)& buffer
     );
 };
