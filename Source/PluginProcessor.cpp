@@ -190,10 +190,10 @@ auto HeuristicLimiterAudioProcessor::getFuncCalculateDiff(
             temporaryProcessorChain.get<compressorIndex>().setAttack(static_cast<float>(param / OVERSAMPLE_RATIO));
         temporaryProcessorChain.process(simulate);
 
-        double result = 0.0;
+        std::atomic<double> result = 0.0;
 
         // 誤差を計算
-		//#pragma omp parallel for
+		#pragma omp parallel for
         for (int channel = 0; channel < totalNumInputChannels; ++channel)
         {
             auto inBufferFrom = buffer[channel].begin();
