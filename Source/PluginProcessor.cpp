@@ -25,7 +25,7 @@ HeuristicLimiterAudioProcessor::HeuristicLimiterAudioProcessor()
     : gain(new juce::AudioParameterFloat("GAIN", "Gain", 0.0f, 20.0f, 0.0f))
     , threshold(new juce::AudioParameterFloat("THRESHOLD", "Threshold", -50.0f, 0.0f, -0.3f))
     , ratio(new juce::AudioParameterFloat("RATIO", "Ratio", 1.0f, 20.0f, 4.0f))
-    , oversampling(2, OVERSAMPLE_FACTOR, juce::dsp::Oversampling<float>::filterHalfBandFIREquiripple)
+    , oversampling(1, OVERSAMPLE_FACTOR, juce::dsp::Oversampling<float>::filterHalfBandFIREquiripple)
     , fft(12)
 {
     for (auto i : {gain, threshold, ratio}) {
@@ -119,6 +119,7 @@ void HeuristicLimiterAudioProcessor::prepareToPlay (double sampleRate, int sampl
 
     // reset oversampler
     oversampling.reset();
+    oversampling.numChannels = getTotalNumOutputChannels();
     oversampling.initProcessing(samplesPerBlock);
 
     // adjust latency
