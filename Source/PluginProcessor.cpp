@@ -33,6 +33,7 @@ HeuristicLimiterAudioProcessor::HeuristicLimiterAudioProcessor()
     }
   
     // prepare DSPs
+	processorChain.get<compressorIndex>().setLookAheadTime(LOOKAHEAD_TIME); // Set the look-ahead time in milliseconds
     processorChain.get<waveShaperIndex>().functionToUse = [](float x) {
         return std::tanh(x);
     };
@@ -240,7 +241,10 @@ void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     // FFT処理
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
+		const auto numSamplesLookAhead = getSampleRate() * LOOKAHEAD_TIME / 1000.0f;
+
         std::copy_n(buffer.getReadPointer(channel), buffer.getNumSamples(), fftBuffer[channel].begin());
+		std::rotate(fftBuffer[channel].begin(), fftBuffer[channel].end() - numSamplesLookAhead, fftBuffer[channel].end());
         std::fill(fftBuffer[channel].begin() + buffer.getNumSamples(), fftBuffer[channel].end(), 0.0f);
         
         fft.performFrequencyOnlyForwardTransform(fftBuffer[channel].data());
@@ -278,6 +282,10 @@ void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
 
     // get oversampled buffer
     auto blockOver = oversampling.processSamplesUp(block);
+
+    // エラー対策
+	blockOver = blockOver.getSubsetChannelBlock(0, totalNumOutputChannels);
+
     juce::dsp::ProcessContextReplacing<float> context(blockOver);
 
     // process

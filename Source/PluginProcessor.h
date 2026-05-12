@@ -9,6 +9,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "LookForwardingCompressor.h"
 
 //==============================================================================
 /**
@@ -69,10 +70,11 @@ private:
     };
 
     constexpr static int OVERSAMPLE_FACTOR = 4, OVERSAMPLE_RATIO = 1 << OVERSAMPLE_FACTOR;
+    constexpr static double LOOKAHEAD_TIME = 5.0;
   
     // filters
     juce::dsp::ProcessorChain<
-        juce::dsp::Compressor<float>,
+        dsp_original::LookForwardingCompressor<float>,
         juce::dsp::WaveShaper<float>
     > processorChain;
     juce::dsp::Oversampling<float> oversampling;
