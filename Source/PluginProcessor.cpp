@@ -124,7 +124,7 @@ void HeuristicLimiterAudioProcessor::prepareToPlay (double sampleRate, int sampl
     oversampling.initProcessing(samplesPerBlock);
 
     // adjust latency
-    setLatencySamples(static_cast<int>(oversampling.getLatencyInSamples()));
+    setLatencySamples(static_cast<int>(oversampling.getLatencyInSamples()) + processorChain.get<compressorIndex>().getLatencyInSamples());
     
     // FFT・バッファ初期化
     const auto order = static_cast<int>(std::ceil(std::log2(samplesPerBlock)));
@@ -241,12 +241,14 @@ void HeuristicLimiterAudioProcessor::processBlock (juce::AudioBuffer<float>& buf
     // FFT処理
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
-		const auto numSamplesLookAhead = getSampleRate() * LOOKAHEAD_TIME / 1000.0f;
+		const auto numSamplesLookAhead = processorChain.get<compressorIndex>().getLatencyInSamples();
 
+		// TODO
         std::copy_n(buffer.getReadPointer(channel), buffer.getNumSamples(), fftBuffer[channel].begin());
-		std::rotate(fftBuffer[channel].begin(), fftBuffer[channel].end() - numSamplesLookAhead, fftBuffer[channel].end());
+		std::rotate(fftBuffer[channel].begin(), fftBuffer[channel].end() - numSamplesLookAhead % fftBuffer[channel].size(), fftBuffer[channel].end());
         std::fill(fftBuffer[channel].begin() + buffer.getNumSamples(), fftBuffer[channel].end(), 0.0f);
-        
+        std::fill(fftBuffer[channel].begin(), fftBuffer[channel].begin() + numSamplesLookAhead % fftBuffer[channel].size(), 0.0f);
+
         fft.performFrequencyOnlyForwardTransform(fftBuffer[channel].data());
     }
 

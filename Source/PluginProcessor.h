@@ -74,7 +74,7 @@ private:
   
     // filters
     juce::dsp::ProcessorChain<
-        dsp_original::LookForwardingCompressor<float>,
+        dsp_original::LookAheadCompressor<float>,
         juce::dsp::WaveShaper<float>
     > processorChain;
     juce::dsp::Oversampling<float> oversampling;

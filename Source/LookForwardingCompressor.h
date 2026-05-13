@@ -38,12 +38,12 @@ namespace dsp_original
             @tags{DSP}
         */
         template <typename SampleType, typename InnerSampleType = double>
-        class LookForwardingCompressor
+        class LookAheadCompressor
         {
         public:
             //==============================================================================
             /** Constructor. */
-            LookForwardingCompressor()
+            LookAheadCompressor()
             {
                 update();
             }
@@ -114,6 +114,11 @@ namespace dsp_original
                 envelopeFilter.reset();
             }
 
+            int getLatencyInSamples() const noexcept
+            {
+                return static_cast<int>(sampleRate * lookAheadTime / 1000.0);
+            }
+
             //==============================================================================
             /** Processes the input and output samples supplied in the processing context. */
             template <typename ProcessContext>
@@ -129,6 +134,7 @@ namespace dsp_original
 
                 if (context.isBypassed)
                 {
+					// TODO
                     outputBlock.copyFrom(inputBlock);
                     return;
                 }
@@ -163,6 +169,25 @@ namespace dsp_original
                 return output;
             }
 
+   //         SampleType processSampleMSSingle(int channel, SampleType inputValue)
+   //         {
+   //             // M/S処理
+   //             //auto [M, S] = MSDecode(inputValue);
+   //             // Ballistics filter with peak rectifier
+   //             auto env = envelopeFilter.processSample(channel, inputValue);
+   //             // VCA
+   //             auto gain = (env < threshold) ? static_cast<SampleType>(1.0)
+			//		: std::pow(env * thresholdInverse, ratioInverse - static_cast<SampleType>(1.0));
+   //             // Look-ahead delay
+   //             delayBuffer[channel].push_back(inputValue); // Store the current input sample in the delay buffer
+   //             // Output
+   //             auto output = gain * delayBuffer[channel].front();
+   //             delayBuffer[channel].pop_front();
+   //             return output;
+			//}
+
+			//SampleType processSampleBypass(int channel
+
         private:
             //==============================================================================
             void update()
@@ -177,7 +202,7 @@ namespace dsp_original
                 delayBuffer.resize(numChannels);
                 for (auto& channelBuffer : delayBuffer) {
 					channelBuffer.clear();
-                    channelBuffer.resize(static_cast<int>(sampleRate * lookAheadTime / 1000.0), 0.0); // Look-ahead delay buffer
+                    channelBuffer.resize(getLatencyInSamples(), 0.0); // Look-ahead delay buffer
                 }
             }
 
